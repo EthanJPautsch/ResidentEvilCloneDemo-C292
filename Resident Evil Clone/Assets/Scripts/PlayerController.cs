@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    [SerializeField] float health;
     [SerializeField] float moveSpeed;
     [SerializeField] float jumpForce;
     [SerializeField] float mouseSensitivity;
@@ -16,6 +18,10 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField] private Transform firePoint;
 
+    [SerializeField] Weapon currentWeapon;
+    private List<IPickupable> inventory = new List<IPickupable>();
+    [SerializeField] TextMeshProUGUI ammoText;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -23,6 +29,11 @@ public class PlayerController : MonoBehaviour
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        if(currentWeapon != null )
+        {
+            ammoText.text = "Ammo " + currentWeapon.CheckAmmo();
+        }
     }
 
     // Update is called once per frame
@@ -37,6 +48,10 @@ public class PlayerController : MonoBehaviour
         if(Input.GetMouseButtonDown(0))
         {
             Shoot();
+        }
+        if(Input.GetMouseButtonDown(0))
+        {
+            currentWeapon.Fire();
         }
     }
 
@@ -65,6 +80,7 @@ public class PlayerController : MonoBehaviour
     void Jump()
     {
         rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        isGrounded = false;
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -72,6 +88,11 @@ public class PlayerController : MonoBehaviour
        if(collision.gameObject.tag == "Ground")
         {
             isGrounded = true;
+        }
+       else if (collision.gameObject.GetComponent<IPickupable>() != null)
+        {
+            inventory.Add(collision.gameObject.GetComponent<IPickupable>());
+            collision.gameObject.GetComponent<IPickupable>().Pickup(this);
         }
     }
 
@@ -83,15 +104,38 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public void TakeDamage(int damage)
+    {
+        health -= damage;
+        rb.AddForce(transform.forward * -10);
+    }
+
     private void Shoot()
     {
         RaycastHit hit;
         if (Physics.Raycast(firePoint.position, firePoint.forward, out hit, 100))
         {
             Debug.DrawRay(firePoint.position, firePoint.forward * hit.distance, Color.red, 2f);
-            if(hit.transform.CompareTag("Zombie"))
+            if (hit.transform.CompareTag("Zombie"))
             {
                 hit.transform.GetComponent<Zombie>().TakeDamage(1);
+            }
+        }
+    }
+
+    private void AttemptReload()
+    {
+        if (currentWeapon != null)
+        {
+            Enums.MagazineType gunMagType = currentWeapon.magazineType;
+            foreach(Magazine item in inventory)
+            {
+                Magazine mag = item;
+                if(item.Get == gunMagType)
+                {
+                    currentWeapon.Reload(item);
+                    inventory.Remove(item);
+                }
             }
         }
     }
