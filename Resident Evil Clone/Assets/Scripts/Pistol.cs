@@ -15,8 +15,12 @@ public class Pistol : Weapon
     {
         
     }
+
     public override void Fire()
     {
         base.Fire();
+
+        // Any extra code
+
     }
 }
